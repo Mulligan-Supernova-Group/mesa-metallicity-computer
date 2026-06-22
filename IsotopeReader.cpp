@@ -206,8 +206,8 @@ void IsotopeReader::writeFile(const std::string& filename) const {
         throw std::runtime_error("IsotopeReader: unable to open file for writing: " + filename);
     }
 
-    outfile << "# Isotope abundance data written by IsotopeReader\n";
-    outfile << "# Format: <isotope> <abundance>\n";
+    outfile << "! Isotope abundance data written by IsotopeReader\n";
+    outfile << "! Format: <isotope> <abundance>\n";
 
     for (const auto& entry : entries_) {
         outfile << entry.isotopeName << " "
