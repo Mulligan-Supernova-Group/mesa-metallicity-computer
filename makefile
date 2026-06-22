@@ -59,7 +59,7 @@ $(METALLICITY_TARGET): $(METALLICITY_OBJS)
 # needless recompiles, but they're created if missing before any
 # compile runs.
 $(OBJDIR)/%.o: %.cpp | $(BINDIR) $(OBJDIR) $(DEPDIR)
-	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -MF $(DEPDIR)/$*.d -c $< -o bin/$@
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -MF $(DEPDIR)/$*.d -c $< -o $@
  
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
