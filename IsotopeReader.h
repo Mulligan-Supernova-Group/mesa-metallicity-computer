@@ -56,7 +56,7 @@ public:
     // in scientific notation). A header comment line is written
     // first. Entries are written in the order returned by
     // getEntries(). Throws std::runtime_error on I/O failure.
-    void writeFile(const std::string& filename) const;
+    void writeFile(const std::string& filename, const std::string & comments=std::string()) const;
 
     // Access to parsed results
     const std::vector<IsotopeEntry>& getEntries() const { return entries_; }

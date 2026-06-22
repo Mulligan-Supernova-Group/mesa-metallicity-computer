@@ -24,6 +24,8 @@ int main(int i_iArgCount, char ** i_lppArgValues)
 	bool bBestGuess = false;
 	const IsotopeEntry * pHeaviestIsotope = nullptr;
 	
+	std::string sCommandLineForOutput;
+	
 	// read command line options and extract the input file name, output file name (if specified) and other options.
 	// options are:
 	//		-X, -x: hydrogen fraction by mass
@@ -38,6 +40,10 @@ int main(int i_iArgCount, char ** i_lppArgValues)
     
     for (int iIdx = 1; iIdx < i_iArgCount; iIdx++)
     {
+    	if (iIdx != 1)
+    		sCommandLineForOutput += std::string(" ");
+    	sCommandLineForOutput += std::string(i_lppArgValues[iIdx]);
+    	
     	if (i_lppArgValues[iIdx][0] == '-') // indicates flag
     	{
     		if (i_lppArgValues[iIdx][1] == 'X' || i_lppArgValues[iIdx][1] == 'x')
@@ -274,7 +280,7 @@ int main(int i_iArgCount, char ** i_lppArgValues)
 	else
 		std::cout << "normalized missing metals" << std::endl;
 	// output results
-	cOutput.writeFile(sOutFile);
+	cOutput.writeFile(sOutFile, std::string("Output generated using ") + sCommandLineForOutput);
 
 	return 0;
 }
