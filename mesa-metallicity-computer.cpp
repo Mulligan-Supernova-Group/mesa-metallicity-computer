@@ -9,7 +9,7 @@
 int main(int i_iArgCount, char ** i_lppArgValues)
 {
     std::string sReadFile;
-    std::string sOutFile;
+    std::string sOutFile = "results.dat";
     std::string sNetfile;
     double dX = -1;
     double dY = -1;
@@ -21,6 +21,7 @@ int main(int i_iArgCount, char ** i_lppArgValues)
 	
 	bool bDump = false;
 	bool bBestGuess = false;
+	const IsotopeEntry * pHeaviestIsotope = nullptr;
 	
 	// read command line options and extract the input file name, output file name (if specified) and other options.
 	// options are:
@@ -50,19 +51,13 @@ int main(int i_iArgCount, char ** i_lppArgValues)
     		{
     			dZ = atof(&i_lppArgValues[iIdx][3]);
     		}
-    		else if (i_lppArgValues[iIdx][1] == 'I' || i_lppArgValues[iIdx][1] == 'i')
+    		else if (i_lppArgValues[iIdx][1] == 'I' || i_lppArgValues[iIdx][1] == 'i' || i_lppArgValues[iIdx][1] == 'N' || i_lppArgValues[iIdx][1] == 'n')
     		{
-    		    if (i_lppArgValues[iIdx][3] == '\"' || i_lppArgValues[iIdx][3] == '\'')
-	    			sNetfile.copy(i_lppArgValues[iIdx],strlen(i_lppArgValues[iIdx]) - 5,4);
-	    		else
-	    			sNetfile.copy(i_lppArgValues[iIdx],strlen(i_lppArgValues[iIdx]) - 3,3);
+    			sNetfile = &(i_lppArgValues[iIdx][3]);
     		}
     		else if (i_lppArgValues[iIdx][1] == 'O' || i_lppArgValues[iIdx][1] == 'o')
     		{
-    		    if (i_lppArgValues[iIdx][3] == '\"' || i_lppArgValues[iIdx][3] == '\'')
-	    			sOutFile.copy(i_lppArgValues[iIdx],strlen(i_lppArgValues[iIdx]) - 5,4);
-	    		else
-	    			sOutFile.copy(i_lppArgValues[iIdx],strlen(i_lppArgValues[iIdx]) - 3,3);
+    			sOutFile = &(i_lppArgValues[iIdx][3]);
     		}
     		else if (strcmp(i_lppArgValues[iIdx],"--dump") == 0)
     		{
@@ -75,10 +70,7 @@ int main(int i_iArgCount, char ** i_lppArgValues)
     	}
     	else
     	{
-		    if (i_lppArgValues[iIdx][0] == '\"' || i_lppArgValues[iIdx][0] == '\'')
-    			sReadFile.copy(i_lppArgValues[iIdx],strlen(i_lppArgValues[iIdx]) - 2,1);
-    		else
-    			sReadFile.copy(i_lppArgValues[iIdx],strlen(i_lppArgValues[iIdx]),0);
+   			sReadFile = i_lppArgValues[iIdx];
     	}
     }
     
@@ -108,7 +100,7 @@ int main(int i_iArgCount, char ** i_lppArgValues)
 		    return 1;
 		}
 		
-		std::vector<NetIsotope> cNetIsotopes = cNetReader.getIsotopes()
+		std::vector<NetIsotope> cNetIsotopes = cNetReader.getIsotopes();
 		// parse the netfile and get abundances for entries specified in the net file
 		for (auto netIter = cNetIsotopes.cbegin(); netIter != cNetIsotopes.cend(); netIter++)
 		{
@@ -119,28 +111,169 @@ int main(int i_iArgCount, char ** i_lppArgValues)
 			cEntry.atomicWeight = netIter->atomicWeight;
 			cEntry.isotopeName = netIter->isotopeName;
 			
-			IsotopeEntry pcAbundanceEntry = cAbundancereader.find(netIter->isotopeName);
+			const IsotopeEntry * pcAbundanceEntry = cAbundancereader.find(netIter->isotopeName);
 			if (pcAbundanceEntry != nullptr)
-				cEntry.abundance = pcAbundanceEntry.abundance;
+				cEntry.abundance = pcAbundanceEntry->abundance;
 			else
 				cEntry.abundance = 0.0;
 				
 			cOutput.setEntry(cEntry);
+			
+			if (pHeaviestIsotope == nullptr || netIter->atomicWeight > pHeaviestIsotope->atomicWeight)
+			{
+				pHeaviestIsotope = cOutput.find(netIter->isotopeName);
+			}
 		}
 		// now go through the original abundance file and deal with entries that aren't in the network file.
-		//@@TODO
+		if (bDump || bBestGuess)
+		{ // don't bother if we're just going to renormalize
+		
+			std::vector<IsotopeEntry> cIsotopes = cAbundancereader.getEntries();
+			// copy the abundance file to the output file
+			for (auto abdIter = cIsotopes.cbegin(); abdIter != cIsotopes.cend(); abdIter++)
+			{
+				const IsotopeEntry* pOutputEntry = cOutput.find(abdIter->isotopeName);
+				if (pOutputEntry == nullptr) // not already included in the output abundance list
+				{
+					if (bDump)
+					{
+						cOutput.addAbundanceToEntry(pHeaviestIsotope->isotopeName,abdIter->abundance);
+						std::cout << "Add abundance from " << abdIter->isotopeName << " to " << pHeaviestIsotope->isotopeName << std::endl;
+					}
+					else// if (bBestGuess)
+					{
+						std::vector<IsotopeEntry> cIsotopes = cOutput.getEntries(abdIter->atomicNumber);
+						if (cIsotopes.size() == 1) // only one isotope of this element; add the abundance of this isotope to the same element
+						{
+							cOutput.addAbundanceToEntry(cIsotopes[0].isotopeName,abdIter->abundance);
+						std::cout << "Add abundance from " << abdIter->isotopeName << " to " << cIsotopes[0].isotopeName << std::endl;
+						}
+						else if (cIsotopes.size() == 0)
+						{ // no isotopes of this element; look for nearby elements
+							bool bDone = false;
+							int iOffset = 1;
+							while (!bDone) {
+								std::vector<IsotopeEntry> cIsotopesHigh = cOutput.getEntries(abdIter->atomicNumber + iOffset);
+								if (abdIter->atomicNumber > iOffset)
+									cIsotopes = cOutput.getEntries(abdIter->atomicNumber - iOffset);
+								for (auto iterIso = cIsotopesHigh.begin(); iterIso < cIsotopesHigh.end(); iterIso++)
+								{
+									cIsotopes.push_back(*iterIso);
+								}
+								if (cIsotopes.size() > 0)
+								{
+									for (auto iterIso = cIsotopes.begin(); iterIso < cIsotopes.end(); iterIso++)
+									{
+										cOutput.addAbundanceToEntry(iterIso->isotopeName,abdIter->abundance / cIsotopes.size());
+										std::cout << "Add a portion of abundance from " << abdIter->isotopeName << " to " << iterIso->isotopeName << std::endl;
+									}
+									bDone = true;
+								}
+								iOffset++;
+							}
+							
+						}
+						else
+						{ // spread abundance equally between nearest isotopes
+							for (auto iterIso = cIsotopes.begin(); iterIso < cIsotopes.end(); iterIso++)
+							{
+								cOutput.addAbundanceToEntry(iterIso->isotopeName,abdIter->abundance / cIsotopes.size());
+							}
+						}
+						
+					}
+				}
+			}
+		}
 	}
 	else
 	{
+		std::vector<IsotopeEntry> cIsotopes = cAbundancereader.getEntries();
 		// copy the abundance file to the output file
-		//@@TODO
+		for (auto abdIter = cIsotopes.cbegin(); abdIter != cIsotopes.cend(); abdIter++)
+		{
+			cOutput.setEntry(*abdIter);
+		}
 	}
 	
-	// renormalize and adjust metallicity
-	//@@TODO
+	double dXcurr = cOutput.totalXAbundance();
+	double dYcurr = cOutput.totalYAbundance();
+	double dZcurr = cOutput.totalZAbundance();
 	
+	// adjust abundances as needed
+	if ((dX != dXcurr && dX != -1) || (dY != dYcurr && dY != -1) || (dZ != dZcurr && dZ != -1))
+	{
+		if (dX == -1)
+		{
+			if (dY == -1)
+			{
+				dX = (-(dZ - dZcurr) / (dXcurr + dYcurr) + 1.0) * dXcurr;
+				dY = (-(dZ - dZcurr) / (dXcurr + dYcurr) + 1.0) * dYcurr;
+			}
+			else
+			{
+				if (dZ == -1)
+				{
+					dX = (-(dY - dYcurr) / (dXcurr + dZcurr) + 1.0) * dXcurr;
+					dZ = (-(dY - dYcurr) / (dXcurr + dZcurr) + 1.0) * dZcurr;
+				}
+				else
+				{
+					dX = 1.0 - dY - dZ;
+				}
+			}
+		}
+		else
+		{
+			if (dY == -1)
+			{
+				if (dZ == -1)
+				{
+					dY = (-(dX - dXcurr) / (dYcurr + dZcurr) + 1.0) * dYcurr;
+					dZ = (-(dX - dXcurr) / (dYcurr + dZcurr) + 1.0) * dZcurr;
+				}
+				else
+				{
+					dY = 1.0 - dX - dZ;
+				}
+			}
+			else // X and Y set; make Z the difference
+			{
+				dZ = 1.0 - dX - dY;
+			}
+		}
+		
+		double dXscale = dX / dXcurr;
+		double dYscale = dY / dYcurr;
+		double dZscale = dZ / dZcurr;
+		std::vector<IsotopeEntry> cIsotopes = cOutput.getEntries();
+		
+		for (auto iterIso = cIsotopes.begin(); iterIso < cIsotopes.end(); iterIso++)
+		{
+			IsotopeEntry cRevisedEntry = *iterIso;
+			if (iterIso->atomicNumber == 1)
+				cRevisedEntry.abundance *= dXscale;
+			else if (iterIso->atomicNumber == 2)
+				cRevisedEntry.abundance *= dYscale;
+			else
+				cRevisedEntry.abundance *= dZscale;
+			cOutput.setEntry(cRevisedEntry);
+		}
+	}
+
+	if (!sNetfile.empty())
+		std::cout << "netfile = " << sNetfile << std::endl;
+	std::cout << "x = " << std::to_string(dX) << std::endl;
+	std::cout << "y = " << std::to_string(dY) << std::endl;
+	std::cout << "z = " << std::to_string(dZ) << std::endl;
+	if (bDump && pHeaviestIsotope != nullptr)
+		std::cout << "transferred all missing isotopes to " << pHeaviestIsotope->isotopeName << std::endl;
+	else if (bBestGuess)
+		std::cout << "Used best guess to fill in missing isotopes in net" << std::endl;
+	else
+		std::cout << "normalized missing metals" << std::endl;
 	// output results
-	//@@TODO
+	cOutput.writeFile(sOutFile);
 
 	return 0;
 }
