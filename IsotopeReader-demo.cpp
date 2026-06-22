@@ -52,14 +52,14 @@ int main(int argc, char** argv) {
     }
 
     // Lookup by atomic number (Z) and atomic weight (A)
-    const IsotopeEntry* byZA = reader.findByZA(92, 238); // uranium-238
+    const IsotopeEntry* byZA = reader.find(92, 238); // uranium-238
     if (byZA) {
         std::cout << "Lookup Z=92, A=238 -> " << byZA->isotopeName
                    << ", abundance = " << byZA->abundance << "\n";
     }
 
     // Lookup by element symbol and atomic weight
-    const IsotopeEntry* bySymbol = reader.findBySymbolA("Fe", 56); // case-insensitive
+    const IsotopeEntry* bySymbol = reader.find("Fe", 56); // case-insensitive
     if (bySymbol) {
         std::cout << "Lookup symbol=Fe, A=56 -> " << bySymbol->isotopeName
                    << ", Z = " << bySymbol->atomicNumber

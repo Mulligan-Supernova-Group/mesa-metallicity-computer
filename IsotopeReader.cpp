@@ -220,6 +220,23 @@ void IsotopeReader::writeFile(const std::string& filename) const {
     }
 }
 
+const std::vector<IsotopeEntry> IsotopeReader::getEntries(const std::string & element) const
+{
+	int Z = atomicNumberForSymbol(element);
+	return this->getEntries(Z);
+}
+const std::vector<IsotopeEntry> IsotopeReader::getEntries(int atomicNumber) const
+{
+	std::vector<IsotopeEntry> cResults;
+    for (const auto& entry : entries_) {
+        if (entry.atomicNumber == atomicNumber) {
+        	cResults.push_back(entry);
+        }
+    }
+    return cResults;
+}
+
+
 const IsotopeEntry* IsotopeReader::find(const std::string& isotopeName) const {
     for (const auto& entry : entries_) {
         if (entry.isotopeName == isotopeName) {
@@ -229,7 +246,7 @@ const IsotopeEntry* IsotopeReader::find(const std::string& isotopeName) const {
     return nullptr;
 }
 
-const IsotopeEntry* IsotopeReader::findByZA(int atomicNumber, int atomicWeight) const {
+const IsotopeEntry* IsotopeReader::find(int atomicNumber, int atomicWeight) const {
     for (const auto& entry : entries_) {
         if (entry.atomicNumber == atomicNumber && entry.atomicWeight == atomicWeight) {
             return &entry;
@@ -238,7 +255,7 @@ const IsotopeEntry* IsotopeReader::findByZA(int atomicNumber, int atomicWeight) 
     return nullptr;
 }
 
-const IsotopeEntry* IsotopeReader::findBySymbolA(const std::string& element,
+const IsotopeEntry* IsotopeReader::find(const std::string& element,
                                                   int atomicWeight) const {
     std::string lower = element;
     std::transform(lower.begin(), lower.end(), lower.begin(),
@@ -293,6 +310,69 @@ bool IsotopeReader::setEntry(const std::string& element, int atomicWeight, doubl
     return setEntry(entry);
 }
 
+
+
+bool IsotopeReader::addAbundanceToEntry(const std::string& isotopeName, const double &dAbundance )
+{
+    for (auto& entry : entries_) {
+        if (entry.isotopeName == isotopeName) {
+        	entry.abundance += dAbundance;
+            return true;
+        }
+    }
+    return false;
+}
+bool IsotopeReader::addAbundanceToEntry(const std::string& element, int atomicWeight, const double &dAbundance )
+{
+    std::string lower = element;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                    [](unsigned char c) { return std::tolower(c); });
+
+    for (auto& entry : entries_) {
+        if (entry.element == lower && entry.atomicWeight == atomicWeight) {
+        	entry.abundance += dAbundance;
+            return true;
+        }
+    }
+    return false;
+}
+bool IsotopeReader::addAbundanceToEntry(int atomicNumber, int atomicWeight, const double &dAbundance )
+{
+
+    for (auto& entry : entries_) {
+        if (entry.atomicNumber == atomicNumber && entry.atomicWeight == atomicWeight) {
+        	entry.abundance += dAbundance;
+            return true;
+        }
+    }
+    return false;
+}
+
+
+double IsotopeReader::totalXAbundance() const {
+    double total = 0.0;
+    for (const auto& entry : entries_) {
+    	if (entry.atomicNumber == 1)
+	        total += entry.abundance;
+    }
+    return total;
+}
+double IsotopeReader::totalYAbundance() const {
+    double total = 0.0;
+    for (const auto& entry : entries_) {
+    	if (entry.atomicNumber == 2)
+	        total += entry.abundance;
+    }
+    return total;
+}
+double IsotopeReader::totalZAbundance() const {
+    double total = 0.0;
+    for (const auto& entry : entries_) {
+    	if ((entry.atomicNumber != 1) && (entry.atomicNumber != 2))
+	        total += entry.abundance;
+    }
+    return total;
+}
 double IsotopeReader::totalAbundance() const {
     double total = 0.0;
     for (const auto& entry : entries_) {

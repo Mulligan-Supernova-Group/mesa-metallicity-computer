@@ -60,6 +60,8 @@ public:
 
     // Access to parsed results
     const std::vector<IsotopeEntry>& getEntries() const { return entries_; }
+    const std::vector<IsotopeEntry> getEntries(const std::string & element) const;
+    const std::vector<IsotopeEntry> getEntries(int atomicNumber) const;
     size_t size() const { return entries_.size(); }
     bool empty() const { return entries_.empty(); }
 
@@ -69,12 +71,12 @@ public:
 
     // Look up a single isotope by atomic number (Z) and atomic weight (A).
     // Returns nullptr if not found.
-    const IsotopeEntry* findByZA(int atomicNumber, int atomicWeight) const;
+    const IsotopeEntry* find(int atomicNumber, int atomicWeight) const;
 
     // Look up a single isotope by element symbol (case-insensitive,
     // e.g. "U" or "u") and atomic weight (A).
     // Returns nullptr if not found.
-    const IsotopeEntry* findBySymbolA(const std::string& element, int atomicWeight) const;
+    const IsotopeEntry* find(const std::string& element, int atomicWeight) const;
 
     // Adds a new entry or overwrites an existing one with the same
     // isotopeName. The element's atomic number (Z) is filled in
@@ -89,6 +91,18 @@ public:
     // it via setEntry().
     bool setEntry(const std::string& element, int atomicWeight, double abundance);
 
+	// function (with variants) to add some abundance fraction to a given entry
+	// returns true if successfull
+	bool addAbundanceToEntry(const std::string& isotopeName, const double &dAbundance );
+	bool addAbundanceToEntry(const std::string& element, int atomicWeight, const double &dAbundance );
+	bool addAbundanceToEntry(int atomicNumber, int atomicWeight, const double &dAbundance );
+	
+    // Sum of all hydrogen abundances
+    double totalXAbundance() const;
+    // Sum of all helium abundances
+    double totalYAbundance() const;
+    // Sum of all metal abundances
+    double totalZAbundance() const;
     // Sum of all abundances (useful sanity check; often should be ~1.0)
     double totalAbundance() const;
 
