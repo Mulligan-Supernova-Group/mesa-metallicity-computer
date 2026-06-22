@@ -14,6 +14,7 @@ int main(int i_iArgCount, char ** i_lppArgValues)
     double dX = -1;
     double dY = -1;
     double dZ = -1;
+    double dMin_Abundance = 1.0e-60; //@@TODO: add a command line option to set this.
     
 	IsotopeReader 	cAbundancereader;
 	NetworkReader	cNetReader;
@@ -115,7 +116,7 @@ int main(int i_iArgCount, char ** i_lppArgValues)
 			if (pcAbundanceEntry != nullptr)
 				cEntry.abundance = pcAbundanceEntry->abundance;
 			else
-				cEntry.abundance = 0.0;
+				cEntry.abundance = dMin_Abundance;
 				
 			cOutput.setEntry(cEntry);
 			
